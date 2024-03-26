@@ -7,6 +7,8 @@ import {
   positionManifestOnTimeline
 } from './playlist-merge';
 
+import resolveUrl from '@videojs/vhs-utils/es/resolve-url';
+
 export const generateSidxKey = (sidx) => sidx &&
   sidx.uri + '-' + byteRangeToString(sidx.byterange);
 
@@ -110,7 +112,8 @@ export const formatAudioPlaylist = ({
       NAME: attributes.id,
       BANDWIDTH: attributes.bandwidth,
       CODECS: attributes.codecs,
-      ['PROGRAM-ID']: 1
+      ['PROGRAM-ID']: 1,
+      initialization: Object.assign(attributes.initialization, {resolveUrl: resolveUrl(attributes.baseUrl, fillUriTemplate(attributes.initialization.sourceURL, attributes.id, null, attributes.bandwidth || null, null))})
     },
     uri: '',
     endList: attributes.type === 'static',
@@ -168,7 +171,8 @@ export const formatVttPlaylist = ({
   const m3u8Attributes = {
     NAME: attributes.id,
     BANDWIDTH: attributes.bandwidth,
-    ['PROGRAM-ID']: 1
+    ['PROGRAM-ID']: 1,
+    initialization: Object.assign(attributes.initialization, {resolveUrl: resolveUrl(attributes.baseUrl, fillUriTemplate(attributes.initialization.sourceURL, attributes.id, null, attributes.bandwidth || null, null))})
   };
 
   if (attributes.codecs) {
@@ -313,7 +317,7 @@ export const formatVideoPlaylist = ({
       CODECS: attributes.codecs,
       BANDWIDTH: attributes.bandwidth,
       ['PROGRAM-ID']: 1,
-      initialization: attributes.initialization
+      initialization: Object.assign(attributes.initialization, {resolveUrl: resolveUrl(attributes.baseUrl, fillUriTemplate(attributes.initialization.sourceURL, attributes.id, null, attributes.bandwidth || null, null))})
     },
     uri: '',
     endList: attributes.type === 'static',
@@ -520,3 +524,76 @@ export const toM3u8 = ({
 
   return manifest;
 };
+
+const fillUriTemplate = (uriTemplate, representationId, number, bandwidth, time) => {
+  const valueTable = {
+    'RepresentationID': representationId,
+    'Number': number,
+    'Bandwidth': bandwidth,
+    'Time': time,
+  };
+
+  const re = /\$(RepresentationID|Number|Bandwidth|Time)?(?:%0([0-9]+)([diouxX]))?\$/g;
+  const uri = uriTemplate.replace(re, (match, name, widthStr, format) => {
+    if (match == '$$') {
+      return '$';
+    }
+
+    let value = valueTable[name];
+    if(value == undefined) {
+      console.log('Unrecognized identifier')
+    }
+    // Note that |value| may be 0 or ''.
+    if (value == null) {
+      console.warning(
+        'URL template does not have an available substitution for ',
+        'identifier "' + name + '":',
+        uriTemplate);
+      return match;
+    }
+
+    if (name == 'RepresentationID' && widthStr) {
+      console.warning(
+        'URL template should not contain a width specifier for identifier',
+        '"RepresentationID":',
+        uriTemplate);
+      widthStr = undefined;
+    }
+
+    if (name == 'Time') {
+      value = Math.round(value);
+    }
+
+    let valueString;
+    switch (format) {
+      case undefined:  // Happens if there is no format specifier.
+      case 'd':
+      case 'i':
+      case 'u':
+        valueString = value.toString();
+        break;
+      case 'o':
+        valueString = value.toString(8);
+        break;
+      case 'x':
+        valueString = value.toString(16);
+        break;
+      case 'X':
+        valueString = value.toString(16).toUpperCase();
+        break;
+      default:
+        goog.asserts.assert(false, 'Unhandled format specifier');
+        valueString = value.toString();
+        break;
+    }
+
+    // Create a padding string.
+    const width =parseInt(widthStr, 10) || 1;
+    const paddingSize = Math.max(0, width - valueString.length);
+    const padding = (new Array(paddingSize + 1)).join('0');
+
+    return padding + valueString;
+  })
+
+  return uri;
+}
