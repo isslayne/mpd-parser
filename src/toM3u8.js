@@ -312,7 +312,8 @@ export const formatVideoPlaylist = ({
       },
       CODECS: attributes.codecs,
       BANDWIDTH: attributes.bandwidth,
-      ['PROGRAM-ID']: 1
+      ['PROGRAM-ID']: 1,
+      initialization: attributes.initialization
     },
     uri: '',
     endList: attributes.type === 'static',
@@ -348,7 +349,7 @@ const videoOnly = ({ attributes }) =>
 const audioOnly = ({ attributes }) =>
   attributes.mimeType === 'audio/mp4' || attributes.mimeType === 'audio/webm' || attributes.contentType === 'audio';
 const vttOnly = ({ attributes }) =>
-  attributes.mimeType === 'text/vtt' || attributes.contentType === 'text';
+  attributes.mimeType === 'text/vtt' || attributes.contentType === 'text' || attributes.mimeType === 'application/mp4';
 
 /**
  * Contains start and timeline properties denoting a timeline start. For DASH, these will
