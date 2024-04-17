@@ -171,6 +171,7 @@ export const formatVttPlaylist = ({
   const m3u8Attributes = {
     NAME: attributes.id,
     BANDWIDTH: attributes.bandwidth,
+    timescale: attributes.timescale,
     ['PROGRAM-ID']: 1,
     initialization: Object.assign(attributes.initialization, {resolveUrl: resolveUrl(attributes.baseUrl, fillUriTemplate(attributes.initialization.sourceURL, attributes.id, null, attributes.bandwidth || null, null))})
   };
@@ -210,7 +211,7 @@ export const organizeAudioPlaylists = (playlists, sidxMapping = {}, isAudioOnly 
     let label = playlist.attributes.label || 'main';
 
     if (language && !playlist.attributes.label) {
-      const roleLabel = role ? ` (${role})` : '';
+      const roleLabel = role ? `(${role})` : '';
 
       label = `${playlist.attributes.lang}${roleLabel}`;
     }
@@ -443,7 +444,8 @@ export const toM3u8 = ({
     sourceDuration: duration,
     type,
     suggestedPresentationDelay,
-    minimumUpdatePeriod
+    minimumUpdatePeriod,
+    timescale
   } = dashPlaylists[0].attributes;
 
   const videoPlaylists = mergeDiscontiguousPlaylists(dashPlaylists.filter(videoOnly)).map(formatVideoPlaylist);
@@ -469,6 +471,10 @@ export const toM3u8 = ({
 
   if (minimumUpdatePeriod >= 0) {
     manifest.minimumUpdatePeriod = minimumUpdatePeriod * 1000;
+  }
+
+  if (timescale) {
+    manifest.timescale = timescale;
   }
 
   if (locations) {
